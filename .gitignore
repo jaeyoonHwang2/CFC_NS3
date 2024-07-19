@@ -2,8 +2,10 @@
 *
 
 # But not directories written below...
-!simulation/src/
+!/simulation/src/
+!/simulation/src/**
+!/simulation/src/*/
 
 # Also, do not ignore .gitignore file
-!.gitignore
+!/.gitignore
 
