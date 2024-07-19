@@ -45,6 +45,20 @@ public:
 		uint32_t m_rpTimeStage;
 		EventId m_rpTimer;
 	} mlx;
+	// CFC START 
+	struct {
+	DataRate m_targetRate;	//< Target rate
+	EventId m_eventUpdateAlpha;
+	double m_alpha;
+	bool m_alpha_cnp_arrived; // indicate if CNP arrived in the last slot
+	bool m_first_cnp; // indicate if the current CNP is the first CNP
+	EventId m_eventDecreaseRate;
+	bool m_decrease_cnp_arrived; // indicate if CNP arrived in the last slot
+	uint32_t m_rpTimeStage;
+	EventId m_rpTimer;
+	uint64_t port_index[IntHeader::maxHop];
+	} cfc;
+	// CFC END
 	struct {
 		uint32_t m_lastUpdateSeq;
 		uint32_t m_lastUpdateTime;

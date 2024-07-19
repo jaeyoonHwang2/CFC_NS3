@@ -202,7 +202,7 @@ void RdmaHw::SetNode(Ptr<Node> node){
 
 	m_node = node;
 	//rdmaHw.txt
-	filePath = "/home/cfc/NS3_HPCC/simulation/rdmaHw.txt";
+	filePath = "/home/cfc/CFC_NS3_simulator/simulation/rdmaHw.txt";
 	writeFile_rdmaHw.open(filePath.c_str(), std::ios::app);
 
 }
@@ -262,7 +262,13 @@ void RdmaHw::AddQueuePair(uint64_t size, uint16_t pg, Ipv4Address sip, Ipv4Addre
 	qp->m_max_rate = m_bps;
 	if (m_cc_mode == 1){
 		qp->mlx.m_targetRate = m_bps;
-	}else if (m_cc_mode == 3){
+	}
+	// CFC START
+	else if (m_cc_mode == 2){
+		qp->mlx.m_targetRate = m_bps;
+	}
+	// CFC END
+	else if (m_cc_mode == 3){
 		qp->hp.m_curRate = m_bps;
 		if (m_multipleRate){
 			for (uint32_t i = 0; i < IntHeader::maxHop; i++)
@@ -392,7 +398,13 @@ int RdmaHw::ReceiveCnp(Ptr<Packet> p, CustomHeader &ch){
 		qp->m_rate = dev->GetDataRate();
 		if (m_cc_mode == 1){
 			qp->mlx.m_targetRate = dev->GetDataRate();
-		}else if (m_cc_mode == 3){
+		}
+		// CFC START
+		else if (m_cc_mode == 2){
+			qp->mlx.m_targetRate = dev->GetDataRate();
+		}
+		// CFC END
+		else if (m_cc_mode == 3){
 			qp->hp.m_curRate = dev->GetDataRate();
 			if (m_multipleRate){
 				for (uint32_t i = 0; i < IntHeader::maxHop; i++)
@@ -442,6 +454,11 @@ int RdmaHw::ReceiveAck(Ptr<Packet> p, CustomHeader &ch){
 		if (m_cc_mode == 1){ // mlx version
 			cnp_received_mlx(qp);
 		} 
+		// CFC START 
+		else if (m_cc_mode == 2){ // CFC version
+			cnp_received_cfc(qp);
+		} 
+		// CFC END
 	}
 
 	if (m_cc_mode == 3){
@@ -524,6 +541,13 @@ void RdmaHw::QpComplete(Ptr<RdmaQueuePair> qp){
 		Simulator::Cancel(qp->mlx.m_eventDecreaseRate);
 		Simulator::Cancel(qp->mlx.m_rpTimer);
 	}
+	// CFC START 
+	else if (m_cc_mode == 2){
+		Simulator::Cancel(qp->mlx.m_eventUpdateAlpha);
+		Simulator::Cancel(qp->mlx.m_eventDecreaseRate);
+		Simulator::Cancel(qp->mlx.m_rpTimer);
+	}
+	// CFC END
 
 	// This callback will log info
 	// It may also delete the rxQp on the receiver
@@ -673,6 +697,25 @@ void RdmaHw::cnp_received_mlx(Ptr<RdmaQueuePair> q){
 	}
 }
 
+// CFC START
+void RdmaHw::cnp_received_cfc(Ptr<RdmaQueuePair> q){
+	q->cfc.m_alpha_cnp_arrived = true; // set CNP_arrived bit for alpha update
+	q->cfc.m_decrease_cnp_arrived = true; // set CNP_arrived bit for rate decrease
+	if (q->cfc.m_first_cnp){
+		// init alpha
+		q->cfc.m_alpha = 1;
+		q->cfc.m_alpha_cnp_arrived = false;
+		// schedule alpha update
+		ScheduleUpdateAlphaMlx(q);
+		// schedule rate decrease
+		ScheduleDecreaseRateMlx(q, 1); // add 1 ns to make sure rate decrease is after alpha update
+		// set rate on first CNP
+		q->cfc.m_targetRate = q->m_rate = m_rateOnFirstCNP * q->m_rate;
+		q->cfc.m_first_cnp = false;
+	}
+}
+// CFC END
+
 void RdmaHw::CheckRateDecreaseMlx(Ptr<RdmaQueuePair> q){
 	ScheduleDecreaseRateMlx(q, 0);
 	if (q->mlx.m_decrease_cnp_arrived){
@@ -795,10 +838,10 @@ void RdmaHw::UpdateRateHp(Ptr<RdmaQueuePair> qp, Ptr<Packet> p, CustomHeader &ch
 			qp->hp.hop[i] = ih.hop[i];
 			if(writeFile_rdmaHw.is_open()){
 				if (ih.hop[i].GetTime()){
-					writeFile_rdmaHw << "NONE" << "\n";
-					writeFile_rdmaHw << ih.hop[i].GetTime() << "\n";	
+					writeFile_rdmaHw << i+1 << "-th hop's GetTime is " << ih.hop[i].GetTime() << "\n";	
+					writeFile_rdmaHw << i+1 << "-th hop's GetForwardingPort is " << ih.hop[i].GetForwardingPort() << "\n";	
 				}else{
-					writeFile_rdmaHw << "NONE" << "\n";
+					writeFile_rdmaHw << "invalid" << "\n";
 				}			
 				writeFile_rdmaHw.flush();
 			}
@@ -814,6 +857,10 @@ void RdmaHw::UpdateRateHp(Ptr<RdmaQueuePair> qp, Ptr<Packet> p, CustomHeader &ch
 	}else {
 		// check packet INT
 		IntHeader &ih = ch.ack.ih;
+		if(writeFile_rdmaHw.is_open()){
+			writeFile_rdmaHw << ih.nhop << "in following RTTs \n";
+			writeFile_rdmaHw.flush();
+		}
 		if (ih.nhop <= IntHeader::maxHop){
 			double max_c = 0;
 			bool inStable = false;

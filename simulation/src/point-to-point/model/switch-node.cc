@@ -58,11 +58,11 @@ TypeId SwitchNode::GetTypeId (void)
 SwitchNode::SwitchNode(){
 
 	// // initial writeFile
-	// filePath = "/home/cfc/NS3_HPCC/simulation/test1.txt";
-	// writeFile_test1.open(filePath.c_str(), std::ios::app);
+	// filePath = "/home/cfc/CFC_NS3_simulator/simulation/switchNode_1.txt";
+	// writeFile_switchNode1.open(filePath.c_str(), std::ios::app);
 	
-	// filePath = "/home/cfc/NS3_HPCC/simulation/test2.txt";
-	// writeFile_test2.open(filePath.c_str(), std::ios::app);
+	filePath = "/home/cfc/CFC_NS3_simulator/simulation/switchNode_2.txt";
+	writeFile_switchNode2.open(filePath.c_str(), std::ios::app);
 
 	m_ecmpSeed = m_id;
 	m_node_type = 1;
@@ -129,11 +129,6 @@ void SwitchNode::CheckAndSendResume(uint32_t inDev, uint32_t qIndex){
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 	int idx = GetOutDev(p, ch);
-
-	// if(writeFile_test1.is_open()){
-	// writeFile_test1 << "port index directly from GetOutDev " << idx << "\n";
-	// writeFile_test1.flush();
-	// }
 	
 	if (idx >= 0){
 		NS_ASSERT_MSG(m_devices[idx]->IsLinkUp(), "The routing table look up should return link that is up");
@@ -253,39 +248,36 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 		if (buf[PppHeader::GetStaticSize() + 9] == 0x11){ // udp packet
 			IntHeader *ih = (IntHeader*)&buf[PppHeader::GetStaticSize() + 20 + 8 + 6]; // ppp, ip, udp, SeqTs & INT
 			Ptr<QbbNetDevice> dev = DynamicCast<QbbNetDevice>(m_devices[ifIndex]);
-				
-			// if(writeFile_test2.is_open()){
-			// 	writeFile_test2 << "port index for INT " << ifIndex << "\n";
-			// 	writeFile_test2.flush();
-			// }	
-			
-			// CFC START 
-			if (m_ccMode == 2 || m_ccMode == 3){ // CFC or HPCC				
-				//ih->PushHop(Simulator::Now().GetTimeStep(), m_txBytes[ifIndex], dev->GetQueue()->GetNBytesTotal(), dev->GetDataRate().GetBitRate());				
-				ih->PushHop(Simulator::Now().GetTimeStep(), m_txBytes[ifIndex], dev->GetQueue()->GetNBytesTotal(), dev->GetDataRate().GetBitRate(), ifIndex);				
-				// check if the ifIndex is the port index
-			// CFC END
-
-		/*
-		/// backward notification
-		if (buf[PppHeader::GetStaticSize() + 9] == 0xFC || buf[PppHeader::GetStaticSize() + 9] == 0xFD){ // udp packet
-			IntHeader *ih = (IntHeader*)&buf[PppHeader::GetStaticSize() + 20 + 12]; // ppp, ip, udp+SeqTs & INT
-			Ptr<QbbNetDevice> dev = DynamicCast<QbbNetDevice>(m_devices[t.GetFlowId()]);
-			
-			if(writeFile_test2.is_open()){
-				writeFile_test2 << "port index for INT " << ifIndex << "\n";
-				writeFile_test2.flush();
-			}	
-			
-			// CFC START 
-			if (m_ccMode == 2 || m_ccMode == 3){ // CFC or HPCC				
-				//ih->PushHop(Simulator::Now().GetTimeStep(), m_txBytes[ifIndex], dev->GetQueue()->GetNBytesTotal(), dev->GetDataRate().GetBitRate());				
-				ih->PushHop(Simulator::Now().GetTimeStep(), m_txBytes[ifIndex], dev->GetQueue()->GetNBytesTotal(), dev->GetDataRate().GetBitRate(), ifIndex);				
-				// check if the ifIndex is the port index
-			// CFC END
-		*/
-		///
-			}else if (m_ccMode == 10){ // HPCC-PINT
+			if (m_ccMode == 3){ // HPCC				
+				ih->PushHop(Simulator::Now().GetTimeStep(), m_txBytes[ifIndex], dev->GetQueue()->GetNBytesTotal(), dev->GetDataRate().GetBitRate(), (uint64_t)ifIndex);				
+				if(writeFile_switchNode2.is_open()){
+					writeFile_switchNode2 << "hop count: " << ih->nhop << "\n";							
+					writeFile_switchNode2 << "Input time: " << Simulator::Now().GetTimeStep() << "\n";	
+					writeFile_switchNode2 << "Output time: " << ih->hop[(ih->nhop)-1].GetTime() << "\n";							
+					writeFile_switchNode2.flush();
+				}	
+			}
+			// CFC START: level 1
+			else if (m_ccMode == 2){ // CFC			
+				ih->PushHop(Simulator::Now().GetTimeStep(), m_txBytes[ifIndex], dev->GetQueue()->GetNBytesTotal(), dev->GetDataRate().GetBitRate(), (uint64_t)ifIndex);				
+				if(writeFile_switchNode2.is_open()){
+					writeFile_switchNode2 << "hop count: " << ih->nhop << "\n";							
+					writeFile_switchNode2 << "Input port index: " << ifIndex << "\n";	
+					writeFile_switchNode2 << "Output port index: " << ih->hop[(ih->nhop)-1].GetForwardingPort() << "\n";							
+					writeFile_switchNode2.flush();
+				}	
+			}
+			// CFC END: level 1
+			// // CFC START: level 2
+			// else if (m_ccMode == 2){ // CFC
+			// 	ih->cfc_PushHop(ifIndex);	
+			// 	if(writeFile_switchNode2.is_open()){
+			// 		writeFile_switchNode2 << ih.cfc_hop[i].GetForwardingPort() << "\n";	
+			// 		writeFile_switchNode2.flush();
+			// 	}				
+			// }
+			// // CFC END: level 2
+			else if (m_ccMode == 10){ // HPCC-PINT
 				uint64_t t = Simulator::Now().GetTimeStep();
 				uint64_t dt = t - m_lastPktTs[ifIndex];
 				if (dt > m_maxRtt)
@@ -293,7 +285,6 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 				uint64_t B = dev->GetDataRate().GetBitRate() / 8; //Bps
 				uint64_t qlen = dev->GetQueue()->GetNBytesTotal();
 				double newU;
-			///std::cout << dev->GetQueue()->GetNBytesTotal();		
 
 				/**************************
 				 * approximate calc

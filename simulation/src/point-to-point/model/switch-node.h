@@ -59,8 +59,8 @@ public:
 	int logres_shift(int b, int l);
 	int log2apprx(int x, int b, int m, int l); // given x of at most b bits, use most significant m bits of x, calc the result in l bits
 
-	std::ofstream writeFile_test1;
-	std::ofstream writeFile_test2;
+	std::ofstream writeFile_switchNode1;
+	std::ofstream writeFile_switchNode2;
 	std::string filePath;
 };
 

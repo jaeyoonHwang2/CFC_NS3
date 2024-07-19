@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <cstdio>
 
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
 namespace ns3 {
 
 class IntHop{
@@ -21,20 +25,18 @@ public:
 					 bytes: bytesWidth,
 					 qlen: qlenWidth;
 		};
+		uint64_t port_index;
 		uint32_t buf[2];
 	};
-	// CFC START
-	uint32_t forwarding_port;
-	// CFC END
 	static const uint32_t byteUnit = 128;
 	static const uint32_t qlenUnit = 80;
 	static uint32_t multi;
 
-	// CFC START
+	// CFC START: level 1
 	uint64_t GetForwardingPort(){
-		return forwarding_port;
+		return (uint64_t)port_index;
 	}
-	// CFC END
+	// CFC END: level 1
 
 	uint64_t GetLineRate(){
 		return lineRateValues[lineRate];
@@ -48,11 +50,11 @@ public:
 	uint64_t GetTime(){
 		return time;
 	}
-	// CFC START
-	void cfc_Set(uint32_t _forwarding_port){
-		forwarding_port = _forwarding_port;
+	// CFC START: level 1
+	void cfc_Set(uint64_t _forwarding_port){
+		port_index = _forwarding_port;
 	}	
-	//CFC END
+	//CFC END: level 1
 	void Set(uint64_t _time, uint64_t _bytes, uint32_t _qlen, uint64_t _rate){
 		time = _time;
 		bytes = _bytes / (byteUnit * multi);
@@ -87,6 +89,20 @@ public:
 	}
 };
 
+// CFC START: level 2
+class CfcHop{
+public:
+	uint32_t forwarding_port;
+
+	uint64_t GetForwardingPort(){
+		return forwarding_port;
+	}
+	void cfc_Set(uint32_t _forwarding_port){
+		forwarding_port = _forwarding_port;
+	}	
+};
+// CFC END: level 2
+
 class IntHeader{
 public:
 	static const uint32_t maxHop = 5;
@@ -102,18 +118,21 @@ public:
 	static Mode mode;
 	static int pint_bytes;
 
+	// std::ofstream writeFile_intHeader;
+	// std::string filePath;
+
 	// Note: the structure of IntHeader must have no internal padding, because we will directly transform the part of packet buffer to IntHeader*
 	union{
 		struct {
 			IntHop hop[maxHop];
 			uint16_t nhop;
 		};
-		// CFC start
+		// CFC start: level 2
 		struct {
-			IntHop cfc_hop[maxHop];
+			CfcHop cfc_hop[maxHop];
 			uint16_t cfc_nhop;
 		};		
-		// CFC end
+		// CFC end: level 2
 		uint64_t ts;
 		union {
 			uint16_t power;
@@ -125,7 +144,13 @@ public:
 
 	IntHeader();
 	static uint32_t GetStaticSize();
-	void PushHop(uint64_t time, uint64_t bytes, uint32_t qlen, uint64_t rate, uint32_t port);
+	// void PushHop(uint64_t time, uint64_t bytes, uint32_t qlen, uint64_t rate);
+	// CFC START: level 1
+	void PushHop(uint64_t time, uint64_t bytes, uint32_t qlen, uint64_t rate, uint64_t port);
+	// CFC END: level 1
+	// CFC START: level 2
+	void cfc_PushHop(uint32_t port);
+	// CFC END: level 2
 	void Serialize (Buffer::Iterator start) const;
 	uint32_t Deserialize (Buffer::Iterator start);
 	uint64_t GetTs(void);

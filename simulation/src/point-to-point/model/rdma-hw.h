@@ -110,6 +110,9 @@ public:
 
 	// Mellanox's version of CNP receive
 	void cnp_received_mlx(Ptr<RdmaQueuePair> q);
+	// CFC START 
+	void cnp_received_cfc(Ptr<RdmaQueuePair> q);
+	// CFC END
 
 	// Mellanox's version of rate decrease
 	// It checks every m_rateDecreaseInterval if CNP arrived (m_decrease_cnp_arrived).

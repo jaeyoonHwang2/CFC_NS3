@@ -23,6 +23,9 @@
 
 #include "ns3/header.h"
 #include "ns3/int-header.h"
+#include <fstream>
+#include <sstream>
+#include <iostream>
 
 namespace ns3 {
 /**

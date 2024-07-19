@@ -41,6 +41,16 @@ RdmaQueuePair::RdmaQueuePair(uint16_t pg, Ipv4Address _sip, Ipv4Address _dip, ui
 	mlx.m_first_cnp = true;
 	mlx.m_decrease_cnp_arrived = false;
 	mlx.m_rpTimeStage = 0;
+	// CFC START
+	cfc.m_alpha = 1;
+	cfc.m_alpha_cnp_arrived = false;
+	cfc.m_first_cnp = true;
+	cfc.m_decrease_cnp_arrived = false;
+	cfc.m_rpTimeStage = 0;
+	for (uint32_t i = 0; i < IntHeader::maxHop; i++){
+		cfc.port_index[i] = 0;
+	}
+	// CFC END
 	hp.m_lastUpdateSeq = 0;
 	hp.m_lastUpdateTime = 0;
 	for (uint32_t i = 0; i < sizeof(hp.keep) / sizeof(hp.keep[0]); i++)
