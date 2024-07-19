@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# But not directories written below...
+!simulation/src/
+
+# Also, do not ignore .gitignore file
+!.gitignore
+
