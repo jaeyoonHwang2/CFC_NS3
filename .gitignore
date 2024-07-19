@@ -1,11 +1,12 @@
-# Ignore everything
-*
+# Ignore everything in the root directory
+/*
 
-# But not directories written below...
+# But do not ignore directories you want to dive into
+!/simulation/
+
+# Ignore everything in these directories
+/simulation/*
+
+# Specifically do not ignore the paths you care about
 !/simulation/src/
-!/simulation/src/**
-!/simulation/src/*/
-
-# Also, do not ignore .gitignore file
-!/.gitignore
-
+!/simulation/run.py
